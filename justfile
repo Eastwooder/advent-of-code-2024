@@ -6,3 +6,6 @@ clippy:
 
 test:
     cargo nextest run
+
+watch:
+    bacon nextest
