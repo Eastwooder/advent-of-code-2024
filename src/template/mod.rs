@@ -1,8 +1,6 @@
-use aoc_client::{AocClient, PuzzleYear};
-use std::env::var;
 use std::{env, fs};
 
-pub mod aoc_cli;
+pub mod aoc_client;
 pub mod commands;
 pub mod runner;
 
@@ -16,21 +14,6 @@ mod timings;
 pub const ANSI_ITALIC: &str = "\x1b[3m";
 pub const ANSI_BOLD: &str = "\x1b[1m";
 pub const ANSI_RESET: &str = "\x1b[0m";
-
-pub const YEAR: PuzzleYear = 2024;
-
-pub fn read_input(day: Day) -> anyhow::Result<String> {
-    aoc_client(day)?.get_input().map_err(|err| err.into())
-}
-
-fn aoc_client(day: Day) -> anyhow::Result<AocClient> {
-    AocClient::builder()
-        .session_cookie(var("SESSION_COOKIE")?)?
-        .day(day.into_inner().into())?
-        .year(YEAR)?
-        .build()
-        .map_err(|err| err.into())
-}
 
 /// Helper function that reads a text file to a string.
 #[must_use]
@@ -76,10 +59,11 @@ macro_rules! solution {
         #[global_allocator]
         static ALLOC: dhat::Alloc = dhat::Alloc;
 
-        fn main() {
+        fn main() -> anyhow::Result<()> {
             use $crate::template::runner::*;
-            let input = $crate::template::read_file("inputs", DAY);
+            let input = $crate::template::aoc_client::read_input(DAY)?;
             $( run_part($func, &input, DAY, $part); )*
+            Ok(())
         }
     };
 }

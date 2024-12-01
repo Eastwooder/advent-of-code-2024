@@ -2,7 +2,7 @@
 
 # 🎄 Advent of Code {year}
 
-Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.rust-lang.org/).
+Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.rust-lang.org/) with a template based on [fspoettel/advent-of-code-rust](https://github.com/fspoettel/advent-of-code-rust).
 
 <!--- advent_readme_stars table --->
 
@@ -11,7 +11,7 @@ Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.
 
 | Day | Part 1 | Part 2 |
 | :---: | :---: | :---:  |
-| [Day 1](./src/bin/01.rs) | `46.5µs` | `56.4µs` |
+| [Day 1](../src/bin/01.rs) | `46.5µs` | `56.4µs` |
 
 **Total: 0.10ms**
 <!--- benchmarking table --->
@@ -24,18 +24,16 @@ To get fast feedback just run `just check` and start coding.
 
 ---
 
-## Template setup
+## Toolchain
 
-This template supports all major OS (macOS, Linux, Windows).
+### Nix based
 
-###  📝 Create your repository
-
-1.  Open [the template repository](https://github.com/fspoettel/advent-of-code-rust) on Github.
-2.  Click [Use this template](https://github.com/fspoettel/advent-of-code-rust/generate) and create your repository.
-3.  Clone your repository to your computer.
-4.  If you are solving a previous year's advent of code, change the `AOC_YEAR` variable in `.cargo/config.toml` to reflect the year you are solving.
+Just run `nix develop` to have all the required tools available. 
+If you have `direnv` enabled then you will automatically switch to the development setup.
 
 ### 💻 Setup rust
+
+Alternatively, you can install the toolchain yourself.
 
 1.  Install the [Rust toolchain](https://www.rust-lang.org/tools/install).
 2.  (recommended) Install the [rust-analyzer](https://rust-analyzer.github.io/manual.html) extension for your code editor.
@@ -43,9 +41,12 @@ This template supports all major OS (macOS, Linux, Windows).
 
 ---
 
-✨ You can start solving puzzles now! Head to the [Usage section](#usage) to see how to use this template. If you like, you can configure [some optional features](#optional-template-features).
-
 ## Usage
+
+If you are solving a previous year's advent of code, change the `AOC_YEAR` variable in `.cargo/config.toml` to reflect the year you are solving.
+
+Additionally, the environment variable `SESSION_COOKIE` needs to be set to your advent of code's session cookie value, otherwise submissions and download of the input will not work!
+(The local tests will be unaffected and can still be executed)
 
 ### ➡️ Scaffold a day
 
@@ -55,7 +56,6 @@ cargo scaffold <day>
 
 # output:
 # Created module file "src/bin/01.rs"
-# Created empty input file "data/inputs/01.txt"
 # Created empty example file "data/examples/01.txt"
 # ---
 # 🎄 Type `cargo solve 01` to run your solution.
@@ -71,7 +71,7 @@ Every [solution](https://github.com/fspoettel/advent-of-code-rust/blob/main/src/
 ### ➡️ Download input for a day
 
 > [!IMPORTANT] 
-> This requires [installing the aoc-cli crate](#configure-aoc-cli-integration).
+> Requires `SESSION_COOKIE` environment variable to be set.
 
 You can automatically download puzzle input and description by either appending the `--download` flag to `scaffold` (e.g. `cargo scaffold 4 --download`) or with the separate `download` command:
 
@@ -82,9 +82,7 @@ cargo download <day>
 # output:
 # [INFO  aoc] 🎄 aoc-cli - Advent of Code command-line tool
 # [INFO  aoc_client] 🎅 Saved puzzle to 'data/puzzles/01.md'
-# [INFO  aoc_client] 🎅 Saved input to 'data/inputs/01.txt'
 # ---
-# 🎄 Successfully wrote input to "data/inputs/01.txt".
 # 🎄 Successfully wrote puzzle to "data/puzzles/01.md".
 ```
 
@@ -106,7 +104,7 @@ The `solve` command runs your solution against real puzzle inputs. To run an opt
 #### Submitting solutions
 
 > [!IMPORTANT]
-> This requires [installing the aoc-cli crate](#configure-aoc-cli-integration).
+> Requires `SESSION_COOKIE` environment variable to be set.
 
 Append the `--submit <part>` option to the `solve` command to submit your solution for checking.
 
@@ -168,14 +166,13 @@ To run tests for a specific day, append `--bin <day>`, e.g. `cargo test --bin 01
 ### ➡️ Read puzzle description
 
 > [!IMPORTANT]
-> This command requires [installing the aoc-cli crate](#configure-aoc-cli-integration).
+> Requires `SESSION_COOKIE` environment variable to be set.
 
 ```sh
 # example: `cargo read 1`
 cargo read <day>
 
 # output:
-# Loaded session cookie from "/Users/<snip>/.adventofcode.session".
 # Fetching puzzle for day 1, 2022...
 # ...the input...
 ```
@@ -183,7 +180,7 @@ cargo read <day>
 ### ➡️ Scaffold, download & read the current aoc day
 
 > [!IMPORTANT]
-> This command requires [installing the aoc-cli crate](#configure-aoc-cli-integration).
+> Requires `SESSION_COOKIE` environment variable to be set.
 
 During december, the `today` shorthand command can be used to:
 
@@ -199,18 +196,14 @@ cargo today
 
 # output:
 # Created module file "src/bin/01.rs"
-# Created empty input file "data/inputs/01.txt"
 # Created empty example file "data/examples/01.txt"
 # ---
 # 🎄 Type `cargo solve 01` to run your solution.
 # [INFO  aoc] 🎄 aoc-cli - Advent of Code command-line tool
 # [INFO  aoc_client] 🎅 Saved puzzle to 'data/puzzles/01.md'
-# [INFO  aoc_client] 🎅 Saved input to 'data/inputs/01.txt'
 # ---
-# 🎄 Successfully wrote input to "data/inputs/01.txt".
 # 🎄 Successfully wrote puzzle to "data/puzzles/01.md".
 #
-# Loaded session cookie from "/Users/<snip>/.adventofcode.session".
 # Fetching puzzle for day 1, 2022...
 # ...the input...
 ```
@@ -229,16 +222,9 @@ cargo clippy
 
 ## Optional template features
 
-### Configure aoc-cli integration
-
-1. Install [`aoc-cli`](https://github.com/scarvalhojr/aoc-cli/) via cargo: `cargo install aoc-cli --version 0.12.0`
-2. Create the file `<home_directory>/.adventofcode.session` and paste your session cookie into it. To retrieve the session cookie, press F12 anywhere on the Advent of Code website to open your browser developer tools. Look in _Cookies_ under the _Application_ or _Storage_ tab, and copy out the `session` cookie value. [^1]
-
-Once installed, you can use the [download command](#download-input--description-for-a-day), the read command, and automatically submit solutions via the [`--submit` flag](#submitting-solutions).
-
 ### Automatically track ⭐️ progress in the readme
 
-This template includes [a Github action](https://github.com/k2bd/advent-readme-stars) that automatically updates the readme with your advent of code progress.
+This template includes [a GitHub action](https://github.com/k2bd/advent-readme-stars) that automatically updates the readme with your advent of code progress.
 
 To enable it, complete the following steps:
 

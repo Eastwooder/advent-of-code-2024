@@ -1,13 +1,11 @@
+use crate::template::ANSI_BOLD;
+use crate::template::{Day, ANSI_ITALIC, ANSI_RESET};
 /// Encapsulates code that interacts with solution functions.
 use std::fmt::Display;
 use std::hint::black_box;
 use std::io::{stdout, Write};
-use std::process::Output;
 use std::time::{Duration, Instant};
 use std::{cmp, env, process};
-
-use crate::template::ANSI_BOLD;
-use crate::template::{aoc_cli, Day, ANSI_ITALIC, ANSI_RESET};
 
 pub fn run_part<I: Clone, T: Display>(func: impl Fn(I) -> Option<T>, input: I, day: Day, part: u8) {
     let part_str = format!("Part {part}");
@@ -132,11 +130,7 @@ fn print_result<T: Display>(result: &Option<T>, part: &str, duration_str: &str) 
 /// Parse the arguments passed to `solve` and try to submit one part of the solution if:
 ///  1. we are in `--release` mode.
 ///  2. aoc-cli is installed.
-fn submit_result<T: Display>(
-    result: T,
-    day: Day,
-    part: u8,
-) -> Option<Result<Output, aoc_cli::AocCommandError>> {
+fn submit_result<T: Display>(result: T, day: Day, part: u8) -> Option<anyhow::Result<()>> {
     let args: Vec<String> = env::args().collect();
 
     if !args.contains(&"--submit".into()) {
@@ -159,11 +153,10 @@ fn submit_result<T: Display>(
         return None;
     }
 
-    if aoc_cli::check().is_err() {
-        eprintln!("command \"aoc\" not found or not callable. Try running \"cargo install aoc-cli\" to install it.");
-        process::exit(1);
-    }
-
-    println!("Submitting result via aoc-cli...");
-    Some(aoc_cli::submit(day, part, &result.to_string()))
+    println!("Submitting result for {day}/{part_submit}...");
+    Some(crate::template::aoc_client::submit(
+        day,
+        part,
+        &result.to_string(),
+    ))
 }

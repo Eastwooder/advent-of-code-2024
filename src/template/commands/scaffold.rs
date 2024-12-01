@@ -28,7 +28,6 @@ fn create_file(path: &str) -> Result<File, std::io::Error> {
 }
 
 pub fn handle(day: Day, overwrite: bool) {
-    let input_path = format!("data/inputs/{day}.txt");
     let example_path = format!("data/examples/{day}.txt");
     let module_path = format!("src/bin/{day}.rs");
 
@@ -50,16 +49,6 @@ pub fn handle(day: Day, overwrite: bool) {
         }
         Err(e) => {
             eprintln!("Failed to write module contents: {e}");
-            process::exit(1);
-        }
-    }
-
-    match create_file(&input_path) {
-        Ok(_) => {
-            println!("Created empty input file \"{}\"", &input_path);
-        }
-        Err(e) => {
-            eprintln!("Failed to create input file: {e}");
             process::exit(1);
         }
     }
