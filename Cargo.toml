@@ -20,7 +20,6 @@ today = ["chrono"]
 test_lib = []
 
 [dependencies]
-
 # Template dependencies
 chrono = { version = "0.4.38", optional = true }
 dhat = { version = "0.3.3", optional = true }
@@ -30,3 +29,4 @@ anyhow = "1.0.93"
 aoc-client = "0.2.0"
 
 # Solution dependencies
+itertools = "0.13.0"
