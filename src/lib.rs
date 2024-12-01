@@ -1,11 +1,3 @@
-pub fn plus(a: u32, b: u32) -> u64 {
-    (a + b).into()
-}
+pub mod template;
 
-#[cfg(test)]
-mod test {
-    #[test]
-    fn a() {
-        assert_eq!(6, crate::plus(2, 4));
-    }
-}
+// Use this file to add helper functions and additional modules.
