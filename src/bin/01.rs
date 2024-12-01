@@ -25,13 +25,11 @@ pub fn part_two(input: &str) -> Option<u32> {
         return None;
     };
 
-    let right_frequency = {
-        let mut hm = HashMap::new();
-        right
-            .iter()
-            .for_each(|num| *hm.entry(num).or_insert(0) += 1);
-        hm
-    };
+    let right_frequency =
+        HashMap::<_, _>::from_iter(right.iter().fold(HashMap::new(), |mut acc, x| {
+            *acc.entry(x).or_insert(0) += 1;
+            acc
+        }));
     let similarity_score: u32 = left
         .iter()
         .map(|l| l * right_frequency.get(l).unwrap_or(&0))
