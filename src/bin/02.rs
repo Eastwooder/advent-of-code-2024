@@ -42,17 +42,18 @@ fn check_report_with_dampener(report: &[u32]) -> bool {
 }
 
 fn check_report(report: &[u32]) -> bool {
-    let mut order = None;
+    assert!(
+        report.len() >= 2,
+        "expect the report to have at least 2 elements"
+    );
+    let order = report[0].cmp(&report[1]);
+    if matches!(order, Ordering::Equal) {
+        return false;
+    }
     for pair in report.windows(2) {
         let first = pair[0];
         let second = pair[1];
-        if order.is_none() {
-            order = Some(first.cmp(&second));
-            if matches!(order, Some(Ordering::Equal)) {
-                return false;
-            }
-        }
-        if Some(first.cmp(&second)) != order {
+        if first.cmp(&second) != order {
             return false;
         }
         if first.abs_diff(second) > 3 {
