@@ -1,2 +1,7 @@
 [toolchain]
-channel = "1.82.0"
+channel = "nightly-2024-12-01"
+components = [
+    "cargo",
+    "llvm-tools",
+    "rustc",
+]
