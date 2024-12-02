@@ -1,4 +1,4 @@
-use itertools::Itertools;
+#![feature(array_windows)]
 use std::cmp::Ordering;
 
 advent_of_code::solution!(2);
@@ -13,9 +13,9 @@ pub fn part_one(input: &str) -> Option<u32> {
     )
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
+pub fn part_two(input: &str) -> Option<u32> {
     Some(
-        parse_input(_input)
+        parse_input(input)
             .iter()
             .map(|report| check_report_with_dampener(report))
             .filter(|r| *r)
@@ -27,17 +27,8 @@ fn check_report_with_dampener(report: &[u32]) -> bool {
     if check_report(report) {
         true
     } else {
-        (0..report.len()).any(|ignore| {
-            check_report(
-                &report
-                    .iter()
-                    .enumerate()
-                    .filter(|(idx, _)| *idx != ignore)
-                    .map(|(_, val)| val)
-                    .copied()
-                    .collect_vec(),
-            )
-        })
+        (0..report.len())
+            .any(|ignore| check_report(&[&report[..ignore], &report[ignore + 1..]].concat()))
     }
 }
 
@@ -50,13 +41,11 @@ fn check_report(report: &[u32]) -> bool {
     if matches!(order, Ordering::Equal) {
         return false;
     }
-    for pair in report.windows(2) {
-        let first = pair[0];
-        let second = pair[1];
-        if first.cmp(&second) != order {
+    for [first, second] in report.array_windows() {
+        if first.cmp(second) != order {
             return false;
         }
-        if first.abs_diff(second) > 3 {
+        if first.abs_diff(*second) > 3 {
             return false;
         }
     }
