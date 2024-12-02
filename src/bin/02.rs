@@ -27,19 +27,17 @@ fn check_report_with_dampener(report: &[u32]) -> bool {
     if check_report(report) {
         true
     } else {
-        for i in 0..report.len() {
-            let damped = report
-                .iter()
-                .enumerate()
-                .filter(|(idx, _)| *idx != i)
-                .map(|(_, val)| val)
-                .copied()
-                .collect_vec();
-            if check_report(&damped) {
-                return true;
-            }
-        }
-        false
+        (0..report.len()).any(|ignore| {
+            check_report(
+                &report
+                    .iter()
+                    .enumerate()
+                    .filter(|(idx, _)| *idx != ignore)
+                    .map(|(_, val)| val)
+                    .copied()
+                    .collect_vec(),
+            )
+        })
     }
 }
 
