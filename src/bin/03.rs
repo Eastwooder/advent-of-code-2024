@@ -1,4 +1,9 @@
+#![feature(coroutines)]
+#![feature(coroutine_trait)]
+
 use regex::Regex;
+use std::ops::{Coroutine, CoroutineState};
+use std::pin::Pin;
 use std::sync::LazyLock;
 
 advent_of_code::solution!(3);
@@ -15,7 +20,8 @@ pub fn part_one(input: &str) -> Option<u32> {
 pub fn part_two(input: &str) -> Option<u32> {
     let mut enabled = true;
     let mut result = 0;
-    for instruction in find_all_instructions(input) {
+    let mut results = find_all_instructions(input);
+    while let CoroutineState::Yielded(instruction) = Pin::new(&mut results).resume(()) {
         match instruction {
             Instruction::Mul(left, right) if enabled => result += left * right,
             Instruction::Mul(_, _) => {}
@@ -48,37 +54,40 @@ fn find_all_mul_regex(input: &str) -> Vec<(u32, u32)> {
     result
 }
 
-fn find_all_instructions(input: &str) -> Vec<Instruction> {
+fn find_all_instructions(
+    input: &str,
+) -> impl Coroutine<Yield = Instruction, Return = ()> + use<'_> {
     static REGEX: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
             r"(?<mul>mul\((?<first>\d{1,3}),(?<second>\d{1,3})\))|(?<do>do\(\))|(?<dont>don't\(\))",
         )
         .unwrap()
     });
-    let mut result = Vec::new();
-    for occ in REGEX.captures_iter(input) {
-        let res = if occ.name("mul").is_some() {
-            let first = occ
-                .name("first")
-                .expect("expected named capture 'first'")
-                .as_str()
-                .parse()
-                .expect("expected 'first' to be a number according to regex");
-            let second = occ
-                .name("second")
-                .expect("expected named capture 'second'")
-                .as_str()
-                .parse()
-                .expect("expected 'second' to be a number according to regex");
-            Instruction::Mul(first, second)
-        } else if (occ.name("do")).is_some() {
-            Instruction::Do
-        } else {
-            Instruction::Dont
-        };
-        result.push(res);
+    #[coroutine]
+    || {
+        for occ in REGEX.captures_iter(input) {
+            yield if occ.name("mul").is_some() {
+                let first = occ
+                    .name("first")
+                    .expect("expected named capture 'first'")
+                    .as_str()
+                    .parse()
+                    .expect("expected 'first' to be a number according to regex");
+                let second = occ
+                    .name("second")
+                    .expect("expected named capture 'second'")
+                    .as_str()
+                    .parse()
+                    .expect("expected 'second' to be a number according to regex");
+                Instruction::Mul(first, second)
+            } else if (occ.name("do")).is_some() {
+                Instruction::Do
+            } else {
+                Instruction::Dont
+            };
+        }
+        ()
     }
-    result
 }
 
 enum Instruction {
