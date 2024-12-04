@@ -86,7 +86,6 @@ fn find_all_instructions(
                 Instruction::Dont
             };
         }
-        ()
     }
 }
 
