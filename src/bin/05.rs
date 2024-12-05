@@ -1,75 +1,64 @@
 use itertools::Itertools;
 use std::cell::Cell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::FromStr;
 
 advent_of_code::solution!(5);
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let instructions = parse_input(input);
-    Some(sum_correct_middle_pages(instructions))
+    let (ordering_rules, print_orders) = parse_input2(input);
+    Some(sum_correct_middle_pages(&ordering_rules, &print_orders))
 }
 
-fn sum_correct_middle_pages(instructions: Vec<Instruction>) -> u32 {
+pub fn part_two(input: &str) -> Option<u32> {
+    let (ordering_rules, print_orders) = parse_input2(input);
+    Some(correct_pages(&ordering_rules, &print_orders))
+}
+
+fn sum_correct_middle_pages(ordering_rules: &[(u32, u32)], print_orders: &[Vec<u32>]) -> u32 {
     let mut sum_correct = 0;
-    let check = build_check_map(&instructions);
-    for instruction in &instructions {
-        let Instruction::Updates(pages) = instruction else {
-            continue;
-        };
-        'page: for (idx, page) in pages.iter().enumerate() {
+    let check = build_check_map(ordering_rules);
+    for print_order in print_orders {
+        'page: for (idx, page) in print_order.iter().enumerate() {
             if let Some(before) = check.get(page) {
                 for after in before {
-                    if pages[..idx].contains(after) {
+                    if print_order[..idx].contains(after) {
                         break 'page;
                     }
                 }
             }
-            if idx == pages.len() - 1 {
-                sum_correct += pages[pages.len() / 2];
+            if idx == print_order.len() - 1 {
+                sum_correct += print_order[print_order.len() / 2];
             }
         }
     }
     sum_correct
 }
 
-fn build_check_map(instructions: &[Instruction]) -> HashMap<u32, HashSet<u32>> {
+fn build_check_map(ordering_rules: &[(u32, u32)]) -> HashMap<u32, Vec<u32>> {
     let mut hm = HashMap::new();
-    for instruction in instructions {
-        if let Instruction::PageOrderingRule((before, after)) = instruction {
-            hm.entry(*before)
-                .or_insert_with(HashSet::new)
-                .insert(*after);
-        }
+    for (before, after) in ordering_rules {
+        hm.entry(*before).or_insert_with(Vec::new).push(*after);
     }
     hm
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    let instructions = parse_input(input);
-    Some(correct_pages(instructions))
-}
-
-fn correct_pages(instructions: Vec<Instruction>) -> u32 {
+fn correct_pages(ordering_rules: &[(u32, u32)], print_orders: &[Vec<u32>]) -> u32 {
     let mut corrected = 0;
-    let check = build_check_map(&instructions);
-    for instruction in &instructions {
-        let Instruction::Updates(pages) = instruction else {
-            continue;
-        };
-        let corrected_page = pages.iter().map(Cell::new).collect_vec();
-        let has_correction = swap_correct(&check, &corrected_page);
-        if has_correction {
-            while swap_correct(&check, &corrected_page) {
-                // fixing correct page
+    let check = build_check_map(ordering_rules);
+    for print_order in print_orders {
+        let corrected_order = print_order.iter().map(Cell::new).collect_vec();
+        if swap_correct(&check, &corrected_order) {
+            while swap_correct(&check, &corrected_order) {
+                // correcting pages
             }
-            corrected += corrected_page[pages.len() / 2].get();
+            corrected += corrected_order[print_order.len() / 2].get();
         }
     }
     corrected
 }
 
-fn swap_correct(check: &HashMap<u32, HashSet<u32>>, corrected_page: &Vec<Cell<&u32>>) -> bool {
+fn swap_correct(check: &HashMap<u32, Vec<u32>>, corrected_page: &Vec<Cell<&u32>>) -> bool {
     let mut has_error = false;
     for (idx, page) in corrected_page.iter().enumerate() {
         if let Some(before) = check.get(page.get()) {
@@ -109,12 +98,31 @@ impl FromStr for Instruction {
     }
 }
 
-fn parse_input(input: &str) -> Vec<Instruction> {
-    input
-        .lines()
-        .filter(|line| !line.is_empty())
-        .map(|line| line.parse().unwrap())
-        .collect()
+fn parse_input2(input: &str) -> (Vec<(u32, u32)>, Vec<Vec<u32>>) {
+    let mut rules = vec![];
+    let mut pages = vec![];
+    let mut iter = input.lines();
+    loop {
+        let line = iter.next();
+        let Some(line) = line else { break };
+        if line.is_empty() {
+            break;
+        }
+        if let Instruction::PageOrderingRule((before, after)) = line.parse().unwrap() {
+            rules.push((before, after));
+        }
+    }
+    loop {
+        let line = iter.next();
+        let Some(line) = line else { break };
+        if line.is_empty() {
+            break;
+        }
+        if let Instruction::Updates(p) = line.parse().unwrap() {
+            pages.push(p);
+        }
+    }
+    (rules, pages)
 }
 
 #[cfg(test)]
