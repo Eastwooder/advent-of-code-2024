@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 advent_of_code::solution!(6);
 
@@ -7,12 +7,90 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(visit_field(map_size, guard_pos, obstacles))
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<u32> {
+    let (map_size, guard_pos, obstacles) = parse_input(input);
+    Some(count_obstacles(map_size, guard_pos, obstacles))
+}
+
+fn count_obstacles(map_size: MapSize, guard: Guard, obstacles: Obstacles) -> u32 {
+    let mut path = HashMap::new();
+    let mut guard_walk = Some(guard);
+    while let Some(guard) = guard_walk {
+        guard_walk = trace(&map_size, guard, &obstacles, &mut path);
+    }
+    let max_path = path.values().max().unwrap();
+    let candidates = path
+        .iter()
+        // .filter(|(_, &count)| count > 1)
+        .filter(|(pos, _)| **pos != guard.0)
+        .map(|(pos, _)| pos);
+    let mut sum_timewarped = 0;
+    for path in candidates {
+        // println!("\nchecking {} x {} : {}", path.0, path.1, pos_on_map(input, *path));
+        // print_map(input,map_size, Some((*path, 'O')));
+        if simulate_walk_with_obstacle(map_size, guard, &obstacles, *path, *max_path as _) {
+            // println!("{} x {} successfully looped the guard", path.0, path.1);
+            sum_timewarped += 1;
+        }
+    }
+    sum_timewarped
+}
+
+#[allow(unused)]
+fn pos_on_map(input: &str, pos: Pos) -> char {
+    for (h_pos, line) in input.lines().enumerate() {
+        for (w_pos, ch) in line.chars().enumerate() {
+            if (h_pos as u32) == pos.1 && (w_pos as u32) == pos.0 {
+                return ch;
+            }
+        }
+    }
+    todo!()
+}
+
+#[allow(unused)]
+fn print_map(input: &str, map_size: MapSize, replacement: Option<(Pos, char)>) {
+    for (height, line) in input.lines().enumerate() {
+        for (width, chr) in line.chars().enumerate() {
+            if let Some((pos, repl)) = replacement {
+                if pos == (width as Width, height as Height) {
+                    print!("{}", repl);
+                } else {
+                    print!("{}", chr);
+                }
+            } else {
+                print!("{}", chr);
+            }
+        }
+        println!();
+    }
+}
+
+fn simulate_walk_with_obstacle(
+    map_size: MapSize,
+    guard: Guard,
+    obstacles: &Obstacles,
+    additional_obstacle: Pos,
+    max_crossed_paths: u32,
+) -> bool {
+    let mut path = HashMap::new();
+    let mut guard_walk = Some(guard);
+    let mut current = 0;
+    let mut obstacles = obstacles.clone();
+    obstacles.insert(additional_obstacle);
+    while let Some(guard) = guard_walk {
+        guard_walk = trace(&map_size, guard, &obstacles, &mut path);
+        current += 1;
+        // FIXME: this is just pure luck and needs to be replaced by a proper solution
+        if current >= (max_crossed_paths * 100) {
+            return true;
+        }
+    }
+    false
 }
 
 fn visit_field(map_size: MapSize, guard: Guard, obstacles: Obstacles) -> u32 {
-    let mut path = HashSet::new();
+    let mut path = HashMap::new();
     let mut guard_walk = Some(guard);
     while let Some(guard) = guard_walk {
         guard_walk = trace(&map_size, guard, &obstacles, &mut path);
@@ -24,7 +102,7 @@ fn trace(
     map_size: &MapSize,
     guard: Guard,
     obstacles: &Obstacles,
-    path: &mut HashSet<Pos>,
+    path: &mut HashMap<Pos, usize>,
 ) -> Option<Guard> {
     let up_limit = 0;
     let down_limit = map_size.1 - 1;
@@ -34,7 +112,7 @@ fn trace(
     let mut y = guard.0 .1;
     loop {
         let dir = guard.1;
-        path.insert((x, y));
+        *path.entry((x, y)).or_insert(0) += 1;
         match (dir, x, y) {
             (Direction::Up, _, up) if up == up_limit => {
                 return None;
@@ -137,6 +215,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(6));
     }
 }
