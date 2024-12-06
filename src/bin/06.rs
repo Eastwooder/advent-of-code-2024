@@ -1,5 +1,5 @@
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 advent_of_code::solution!(6);
 
@@ -14,14 +14,14 @@ pub fn part_two(input: &str) -> Option<u32> {
 }
 
 fn count_obstacles(map_size: MapSize, guard: Guard, obstacles: Obstacles) -> u32 {
-    let mut path = HashMap::new();
+    let mut path = HashSet::new();
     let mut guard_walk = Some(guard);
     while let Some(guard) = guard_walk {
         guard_walk = trace(&map_size, guard, &obstacles, &mut path);
     }
     path.par_iter()
-        .filter(|(pos, _)| **pos != guard.0)
-        .map(|(pos, _)| pos)
+        .filter(|pos| **pos != guard.0)
+        .map(|pos| pos)
         .filter(|pos| simulate_walk_with_obstacle(map_size, guard, &obstacles, **pos))
         .count() as _
 }
@@ -62,7 +62,7 @@ fn simulate_walk_with_obstacle(
     obstacles: &Obstacles,
     additional_obstacle: Pos,
 ) -> bool {
-    let mut path = HashMap::new();
+    let mut path = HashSet::new();
     let mut guard_walk = Some(guard);
     let mut obstacles = obstacles.clone();
     obstacles.insert(additional_obstacle);
@@ -78,7 +78,7 @@ fn simulate_walk_with_obstacle(
 }
 
 fn visit_field(map_size: MapSize, guard: Guard, obstacles: Obstacles) -> u32 {
-    let mut path = HashMap::new();
+    let mut path = HashSet::new();
     let mut guard_walk = Some(guard);
     while let Some(guard) = guard_walk {
         guard_walk = trace(&map_size, guard, &obstacles, &mut path);
@@ -90,7 +90,7 @@ fn trace(
     map_size: &MapSize,
     guard: Guard,
     obstacles: &Obstacles,
-    path: &mut HashMap<Pos, usize>,
+    path: &mut HashSet<Pos>,
 ) -> Option<Guard> {
     let up_limit = 0;
     let down_limit = map_size.1 - 1;
@@ -100,24 +100,15 @@ fn trace(
     let mut y = guard.0 .1;
     loop {
         let dir = guard.1;
-        *path.entry((x, y)).or_insert(0) += 1;
+        path.insert((x, y));
         match (dir, x, y) {
-            (Direction::Up, _, up) if up == up_limit => {
-                return None;
-            }
-            (Direction::Down, _, down) if down == down_limit => {
-                return None;
-            }
-            (Direction::Left, left, _) if left == left_limit => {
-                return None;
-            }
-            (Direction::Right, right, _) if right == right_limit => {
-                return None;
-            }
+            (Direction::Up, _, up) if up == up_limit => return None,
+            (Direction::Down, _, down) if down == down_limit => return None,
+            (Direction::Left, left, _) if left == left_limit => return None,
+            (Direction::Right, right, _) if right == right_limit => return None,
+            (_, width, _) if width == 0 || width == map_size.0 - 1 => return None,
+            (_, _, height) if height == 0 || height == map_size.1 - 1 => return None,
             _ => (),
-        }
-        if y == 0 || y == map_size.1 - 1 || x == 0 || x == map_size.0 - 1 {
-            return None;
         }
         let (new_x, new_y) = guard.1.offset_calc((x, y));
         if obstacles.contains(&(new_x, new_y)) {
@@ -136,6 +127,7 @@ enum Direction {
     Left,
 }
 impl Direction {
+    #[inline]
     fn turn(self) -> Direction {
         match self {
             Direction::Up => Direction::Right,
@@ -145,6 +137,7 @@ impl Direction {
         }
     }
 
+    #[inline]
     fn offset_calc(self, (x, y): Pos) -> Pos {
         match self {
             Direction::Up => (x, y.saturating_sub(1)),
