@@ -1,3 +1,4 @@
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::{HashMap, HashSet};
 
 advent_of_code::solution!(6);
@@ -18,22 +19,11 @@ fn count_obstacles(map_size: MapSize, guard: Guard, obstacles: Obstacles) -> u32
     while let Some(guard) = guard_walk {
         guard_walk = trace(&map_size, guard, &obstacles, &mut path);
     }
-    let max_path = path.values().max().unwrap();
-    let candidates = path
-        .iter()
-        // .filter(|(_, &count)| count > 1)
+    path.par_iter()
         .filter(|(pos, _)| **pos != guard.0)
-        .map(|(pos, _)| pos);
-    let mut sum_timewarped = 0;
-    for path in candidates {
-        // println!("\nchecking {} x {} : {}", path.0, path.1, pos_on_map(input, *path));
-        // print_map(input,map_size, Some((*path, 'O')));
-        if simulate_walk_with_obstacle(map_size, guard, &obstacles, *path, *max_path as _) {
-            // println!("{} x {} successfully looped the guard", path.0, path.1);
-            sum_timewarped += 1;
-        }
-    }
-    sum_timewarped
+        .map(|(pos, _)| pos)
+        .filter(|pos| simulate_walk_with_obstacle(map_size, guard, &obstacles, **pos))
+        .count() as _
 }
 
 #[allow(unused)]
@@ -71,20 +61,18 @@ fn simulate_walk_with_obstacle(
     guard: Guard,
     obstacles: &Obstacles,
     additional_obstacle: Pos,
-    max_crossed_paths: u32,
 ) -> bool {
     let mut path = HashMap::new();
     let mut guard_walk = Some(guard);
-    let mut current = 0;
     let mut obstacles = obstacles.clone();
     obstacles.insert(additional_obstacle);
+    let mut loop_check = HashSet::new();
     while let Some(guard) = guard_walk {
-        guard_walk = trace(&map_size, guard, &obstacles, &mut path);
-        current += 1;
-        // FIXME: this is just pure luck and needs to be replaced by a proper solution
-        if current >= (max_crossed_paths * 100) {
+        if loop_check.contains(&guard) {
             return true;
         }
+        loop_check.insert(guard);
+        guard_walk = trace(&map_size, guard, &obstacles, &mut path);
     }
     false
 }
@@ -140,7 +128,7 @@ fn trace(
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum Direction {
     Up,
     Right,
