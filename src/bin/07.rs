@@ -1,6 +1,7 @@
 #![feature(array_windows)]
 
 use anyhow::{bail, Context};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::fmt::{Debug, Formatter};
 use std::ops::{Add, Mul};
 
@@ -37,7 +38,7 @@ fn count_digits(n: u64) -> u32 {
 
 fn count_solvable(equations: Vec<Equation>, rec_fn: fn(u64, u64, &[u64]) -> bool) -> u64 {
     equations
-        .into_iter()
+        .par_iter()
         .filter(|equation| rec_fn(equation.total, 0, &equation.candidates))
         .map(|equation| equation.total)
         .sum()
