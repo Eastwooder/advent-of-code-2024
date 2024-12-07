@@ -60,21 +60,17 @@ fn count_solvable(equations: Vec<Equation>, operators: &[fn(u64, u64) -> u64]) -
     sum_total_valid
 }
 
-fn generate_permutations<T: Copy>(input: &[T], k: usize) -> Vec<Vec<T>> {
+fn generate_permutations<T: Copy>(input: &[T], k: usize) -> Box<dyn Iterator<Item = Vec<T>> + '_> {
     if k == 0 {
-        return vec![vec![]];
+        return Box::new(std::iter::once(vec![]));
     }
-
-    let mut result = Vec::new();
-    for &item in input {
-        for mut sub_perm in generate_permutations(input, k - 1) {
+    Box::new(input.iter().flat_map(move |&item| {
+        generate_permutations(input, k - 1).map(move |mut sub_perm| {
             let mut perm = vec![item];
             perm.append(&mut sub_perm);
-            result.push(perm);
-        }
-    }
-
-    result
+            perm
+        })
+    }))
 }
 
 #[allow(dead_code)]
