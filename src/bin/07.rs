@@ -2,6 +2,7 @@
 
 use anyhow::{bail, Context};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::ops::{Add, Mul};
 
@@ -18,22 +19,7 @@ pub fn part_two(input: &str) -> Option<u64> {
 }
 
 fn concat(first: u64, second: u64) -> u64 {
-    let factor = count_digits(second);
-    first * (10u64.pow(factor)) + second
-}
-
-#[inline]
-fn count_digits(n: u64) -> u32 {
-    if n == 0 {
-        return 1;
-    }
-    let mut count = 0;
-    let mut num = n;
-    while num > 0 {
-        num /= 10;
-        count += 1;
-    }
-    count
+    first * (10u64.pow(second.ilog10() + 1)) + second
 }
 
 fn count_solvable(equations: Vec<Equation>, rec_fn: fn(u64, u64, &[u64]) -> bool) -> u64 {
@@ -45,36 +31,29 @@ fn count_solvable(equations: Vec<Equation>, rec_fn: fn(u64, u64, &[u64]) -> bool
 }
 
 fn calculate_2(limit: u64, curr_sum: u64, nums: &[u64]) -> bool {
-    if limit == curr_sum {
-        return true;
+    match curr_sum.cmp(&limit) {
+        Ordering::Less => {}
+        Ordering::Equal => return true,
+        Ordering::Greater => return false,
     }
-    if let Some(&num) = nums.first() {
-        if curr_sum > limit {
-            false
-        } else {
-            calculate_2(limit, curr_sum + num, &nums[1..])
-                || calculate_2(limit, curr_sum * num, &nums[1..])
-        }
-    } else {
-        false
-    }
+    let Some(&num) = nums.first() else {
+        return false;
+    };
+    calculate_2(limit, curr_sum + num, &nums[1..]) || calculate_2(limit, curr_sum * num, &nums[1..])
 }
 
 fn calculate_3(limit: u64, curr_sum: u64, nums: &[u64]) -> bool {
-    if limit == curr_sum {
-        return true;
+    match curr_sum.cmp(&limit) {
+        Ordering::Less => {}
+        Ordering::Equal => return true,
+        Ordering::Greater => return false,
     }
-    if let Some(&num) = nums.first() {
-        if curr_sum > limit {
-            false
-        } else {
-            calculate_3(limit, curr_sum + num, &nums[1..])
-                || calculate_3(limit, curr_sum * num, &nums[1..])
-                || calculate_3(limit, concat(curr_sum, num), &nums[1..])
-        }
-    } else {
-        false
-    }
+    let Some(&num) = nums.first() else {
+        return false;
+    };
+    calculate_3(limit, curr_sum + num, &nums[1..])
+        || calculate_3(limit, curr_sum * num, &nums[1..])
+        || calculate_3(limit, concat(curr_sum, num), &nums[1..])
 }
 
 #[allow(unused)]
@@ -96,25 +75,17 @@ fn dyn_calculate<const N: usize>(
     nums: &[u64],
     operators: [fn(u64, u64) -> u64; N],
 ) -> bool {
-    if limit == curr_sum {
-        return true;
+    match curr_sum.cmp(&limit) {
+        Ordering::Less => {}
+        Ordering::Equal => return true,
+        Ordering::Greater => return false,
     }
-    if let Some(&num) = nums.first() {
-        if curr_sum > limit {
-            false
-        } else {
-            for op in operators {
-                if dyn_calculate(limit, op(curr_sum, num), &nums[1..], operators) {
-                    return true;
-                }
-            }
-            operators
-                .iter()
-                .any(|op| dyn_calculate(limit, op(curr_sum, num), &nums[1..], operators))
-        }
-    } else {
-        false
-    }
+    let Some(&num) = nums.first() else {
+        return false;
+    };
+    operators
+        .iter()
+        .any(|op| dyn_calculate(limit, op(curr_sum, num), &nums[1..], operators))
 }
 
 #[allow(dead_code)]
