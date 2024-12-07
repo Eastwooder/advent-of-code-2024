@@ -8,12 +8,12 @@ advent_of_code::solution!(7);
 
 pub fn part_one(input: &str) -> Option<u64> {
     let equations = parse_input(input).unwrap();
-    Some(count_solvable(equations, &[u64::add, u64::mul]))
+    Some(count_solvable(equations, calculate_2))
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
     let equations = parse_input(input).unwrap();
-    Some(count_solvable(equations, &[u64::add, u64::mul, concat]))
+    Some(count_solvable(equations, calculate_3))
 }
 
 fn concat(first: u64, second: u64) -> u64 {
@@ -35,42 +35,85 @@ fn count_digits(n: u64) -> u32 {
     count
 }
 
-fn count_solvable(equations: Vec<Equation>, operators: &[fn(u64, u64) -> u64]) -> u64 {
-    let mut sum_total_valid = 0;
-    for equation in equations {
-        let num_operands = equation.candidates.len() - 1;
-        // println!("\n{equation:?}");
-        for fun_candidates in generate_permutations(operators, num_operands) {
-            // print_formula(&equation, &fun_candidates);
-            let mut can = equation.candidates.iter();
-            let mut sum = *can.next().expect("expected the candidates to be not empty");
-            for (fun, &next) in fun_candidates.iter().zip(can) {
-                sum = fun(sum, next);
-                // sum = fun(sum, *next);
-                if sum > equation.total {
-                    break;
-                }
-            }
-            if sum == equation.total {
-                sum_total_valid += equation.total;
-                break;
-            }
-        }
-    }
-    sum_total_valid
+fn count_solvable(equations: Vec<Equation>, rec_fn: fn(u64, u64, &[u64]) -> bool) -> u64 {
+    equations
+        .into_iter()
+        .filter(|equation| rec_fn(equation.total, 0, &equation.candidates))
+        .map(|equation| equation.total)
+        .sum()
 }
 
-fn generate_permutations<T: Copy>(input: &[T], k: usize) -> Box<dyn Iterator<Item = Vec<T>> + '_> {
-    if k == 0 {
-        return Box::new(std::iter::once(vec![]));
+fn calculate_2(limit: u64, curr_sum: u64, nums: &[u64]) -> bool {
+    if limit == curr_sum {
+        return true;
     }
-    Box::new(input.iter().flat_map(move |&item| {
-        generate_permutations(input, k - 1).map(move |mut sub_perm| {
-            let mut perm = vec![item];
-            perm.append(&mut sub_perm);
-            perm
-        })
-    }))
+    if let Some(&num) = nums.first() {
+        if curr_sum > limit {
+            false
+        } else {
+            calculate_2(limit, curr_sum + num, &nums[1..])
+                || calculate_2(limit, curr_sum * num, &nums[1..])
+        }
+    } else {
+        false
+    }
+}
+
+fn calculate_3(limit: u64, curr_sum: u64, nums: &[u64]) -> bool {
+    if limit == curr_sum {
+        return true;
+    }
+    if let Some(&num) = nums.first() {
+        if curr_sum > limit {
+            false
+        } else {
+            calculate_3(limit, curr_sum + num, &nums[1..])
+                || calculate_3(limit, curr_sum * num, &nums[1..])
+                || calculate_3(limit, concat(curr_sum, num), &nums[1..])
+        }
+    } else {
+        false
+    }
+}
+
+#[allow(unused)]
+fn dyn_count_solvable<const N: usize>(
+    equations: Vec<Equation>,
+    operators: [fn(u64, u64) -> u64; N],
+) -> u64 {
+    equations
+        .into_iter()
+        .filter(|equation| dyn_calculate(equation.total, 0, &equation.candidates, operators))
+        .map(|equation| equation.total)
+        .sum()
+}
+
+#[allow(unused)]
+fn dyn_calculate<const N: usize>(
+    limit: u64,
+    curr_sum: u64,
+    nums: &[u64],
+    operators: [fn(u64, u64) -> u64; N],
+) -> bool {
+    if limit == curr_sum {
+        return true;
+    }
+    if let Some(&num) = nums.first() {
+        if curr_sum > limit {
+            false
+        } else {
+            for op in operators {
+                if dyn_calculate(limit, op(curr_sum, num), &nums[1..], operators) {
+                    return true;
+                }
+            }
+            operators
+                .iter()
+                .any(|op| dyn_calculate(limit, op(curr_sum, num), &nums[1..], operators))
+        }
+    } else {
+        false
+    }
 }
 
 #[allow(dead_code)]
@@ -149,5 +192,19 @@ mod tests {
         };
         let ff = FormatFormula(&equation, &[u64::add, u64::mul, concat, u64::add]);
         assert_eq!("55 + 14 * 34 || 99 + 12", format!("{ff:?}"));
+    }
+
+    #[test]
+    fn test_part_one_alternative() {
+        let equations = parse_input(&advent_of_code::template::read_file("examples", DAY)).unwrap();
+        let result = dyn_count_solvable(equations, [u64::add, u64::mul]);
+        assert_eq!(result, 3749);
+    }
+
+    #[test]
+    fn test_part_two_alternative() {
+        let equations = parse_input(&advent_of_code::template::read_file("examples", DAY)).unwrap();
+        let result = dyn_count_solvable(equations, [u64::add, u64::mul, concat]);
+        assert_eq!(result, 11387);
     }
 }
