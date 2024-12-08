@@ -1,5 +1,5 @@
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::collections::HashSet;
+use rustc_hash::FxHashSet;
 
 advent_of_code::solution!(6);
 
@@ -13,80 +13,25 @@ pub fn part_two(input: &str) -> Option<u32> {
     Some(count_obstacles(map_size, guard_pos, obstacles))
 }
 
-fn count_obstacles(map_size: MapSize, guard: Guard, obstacles: Obstacles) -> u32 {
-    let mut path = HashSet::new();
-    let mut guard_walk = Some(guard);
-    while let Some(guard) = guard_walk {
-        guard_walk = trace(&map_size, guard, &obstacles, &mut path);
-    }
-    path.par_iter()
-        .filter(|pos| **pos != guard.0)
-        .map(|pos| pos)
-        .filter(|pos| simulate_walk_with_obstacle(map_size, guard, &obstacles, **pos))
-        .count() as _
-}
-
-#[allow(unused)]
-fn pos_on_map(input: &str, pos: Pos) -> char {
-    for (h_pos, line) in input.lines().enumerate() {
-        for (w_pos, ch) in line.chars().enumerate() {
-            if (h_pos as u32) == pos.1 && (w_pos as u32) == pos.0 {
-                return ch;
-            }
-        }
-    }
-    todo!()
-}
-
-#[allow(unused)]
-fn print_map(input: &str, map_size: MapSize, replacement: Option<(Pos, char)>) {
-    for (height, line) in input.lines().enumerate() {
-        for (width, chr) in line.chars().enumerate() {
-            if let Some((pos, repl)) = replacement {
-                if pos == (width as Width, height as Height) {
-                    print!("{}", repl);
-                } else {
-                    print!("{}", chr);
-                }
-            } else {
-                print!("{}", chr);
-            }
-        }
-        println!();
-    }
-}
-
-fn simulate_walk_with_obstacle(
-    map_size: MapSize,
-    guard: Guard,
-    obstacles: &Obstacles,
-    additional_obstacle: Pos,
-) -> bool {
-    let mut path = HashSet::new();
-    let mut guard_walk = Some(guard);
-    let mut obstacles = obstacles.clone();
-    obstacles.insert(additional_obstacle);
-    let mut loop_check = HashSet::new();
-    while let Some(guard) = guard_walk {
-        if loop_check.contains(&guard) {
-            return true;
-        }
-        loop_check.insert(guard);
-        guard_walk = trace(&map_size, guard, &obstacles, &mut path);
-    }
-    false
-}
+type HashSet<T> = FxHashSet<T>;
+type Guard = (Pos2, Direction);
+type Width = u32;
+type Height = u32;
+type MapSize = (Width, Height);
+type Pos = (Width, Height);
+type Pos2 = u32;
+type Obstacles = HashSet<Pos2>;
 
 fn visit_field(map_size: MapSize, guard: Guard, obstacles: Obstacles) -> u32 {
-    let mut path = HashSet::new();
+    let mut path = HashSet::default();
     let mut guard_walk = Some(guard);
     while let Some(guard) = guard_walk {
-        guard_walk = trace(&map_size, guard, &obstacles, &mut path);
+        guard_walk = trace_simple(&map_size, guard, &obstacles, &mut path);
     }
     path.len() as _
 }
 
-fn trace(
+fn trace_simple(
     map_size: &MapSize,
     guard: Guard,
     obstacles: &Obstacles,
@@ -96,8 +41,7 @@ fn trace(
     let down_limit = map_size.1 - 1;
     let left_limit = 0;
     let right_limit = map_size.0 - 1;
-    let mut x = guard.0 .0;
-    let mut y = guard.0 .1;
+    let (mut x, mut y) = map_size.to_coord(guard.0);
     loop {
         let dir = guard.1;
         path.insert((x, y));
@@ -111,11 +55,133 @@ fn trace(
             _ => (),
         }
         let (new_x, new_y) = guard.1.offset_calc((x, y));
-        if obstacles.contains(&(new_x, new_y)) {
-            return Some(((x, y), guard.1.turn()));
+        if obstacles.contains(&map_size.to_pos((new_x, new_y))) {
+            return Some((map_size.to_pos((x, y)), guard.1.turn()));
         }
         x = new_x;
         y = new_y;
+    }
+}
+
+trait MapSizeExt {
+    fn to_pos(&self, pos: Pos) -> Pos2;
+    fn to_coord(&self, pos: Pos2) -> Pos;
+}
+impl MapSizeExt for MapSize {
+    #[inline]
+    fn to_pos(&self, pos: Pos) -> Pos2 {
+        assert!(self.0 >= pos.0);
+        assert!(self.1 >= pos.1);
+        let (x, y) = pos;
+        x + (y * self.0)
+    }
+
+    #[inline]
+    fn to_coord(&self, pos: Pos2) -> Pos {
+        (pos % self.0, pos / self.0)
+    }
+}
+
+#[inline]
+fn count_obstacles(map_size: MapSize, guard_start: Guard, obstacles: Obstacles) -> u32 {
+    let mut path = HashSet::with_capacity_and_hasher(obstacles.len() / 8, Default::default());
+    let mut guard_walk = Some(guard_start);
+
+    while let Some(guard) = guard_walk {
+        guard_walk = trace(&map_size, guard, &obstacles, guard.0, &mut path);
+    }
+
+    path.par_iter()
+        .filter(|&&pos| pos != guard_start.0)
+        .filter(|&&pos| simulate_walk_with_obstacle(map_size, guard_start, &obstacles, pos))
+        .count() as u32
+}
+
+#[inline]
+fn simulate_walk_with_obstacle(
+    map_size: MapSize,
+    guard_start: Guard,
+    obstacles: &Obstacles,
+    additional_obstacle: Pos2,
+) -> bool {
+    let mut guard_walk = Some(guard_start);
+    let mut loop_check = HashSet::with_capacity_and_hasher(obstacles.len() / 8, Default::default());
+    while let Some(guard) = guard_walk {
+        if loop_check.contains(&guard) {
+            return true;
+        }
+        loop_check.insert(guard);
+        guard_walk = trace_no_track(&map_size, guard, obstacles, additional_obstacle);
+    }
+    false
+}
+
+#[inline]
+fn trace(
+    map_size: &MapSize,
+    guard: Guard,
+    obstacles: &Obstacles,
+    additional_obstacle: Pos2,
+    path: &mut HashSet<Pos2>,
+) -> Option<Guard> {
+    let up_limit = 0;
+    let down_limit = map_size.1 - 1;
+    let left_limit = 0;
+    let right_limit = map_size.0 - 1;
+
+    let (mut curr_x, mut curr_y) = map_size.to_coord(guard.0);
+    let curr_dir = guard.1;
+
+    loop {
+        path.insert(map_size.to_pos((curr_x, curr_y)));
+
+        match (curr_dir, curr_x, curr_y) {
+            (Direction::Up, _, up) if up == up_limit => return None,
+            (Direction::Down, _, down) if down == down_limit => return None,
+            (Direction::Left, left, _) if left == left_limit => return None,
+            (Direction::Right, right, _) if right == right_limit => return None,
+            _ => (),
+        }
+
+        let (new_x, new_y) = curr_dir.offset_calc((curr_x, curr_y));
+        let new_pos = map_size.to_pos((new_x, new_y));
+        if additional_obstacle == new_pos || obstacles.contains(&new_pos) {
+            return Some((map_size.to_pos((curr_x, curr_y)), curr_dir.turn()));
+        }
+        (curr_x, curr_y) = (new_x, new_y);
+    }
+}
+
+#[inline]
+fn trace_no_track(
+    map_size: &MapSize,
+    guard: Guard,
+    obstacles: &Obstacles,
+    additional_obstacle: Pos2,
+) -> Option<Guard> {
+    let up_limit = 0;
+    let down_limit = map_size.1 - 1;
+    let left_limit = 0;
+    let right_limit = map_size.0 - 1;
+
+    let (mut curr_x, mut curr_y) = map_size.to_coord(guard.0);
+    let curr_dir = guard.1;
+
+    loop {
+        match (curr_dir, curr_x, curr_y) {
+            (Direction::Up, _, up) if up == up_limit => return None,
+            (Direction::Down, _, down) if down == down_limit => return None,
+            (Direction::Left, left, _) if left == left_limit => return None,
+            (Direction::Right, right, _) if right == right_limit => return None,
+            _ => (),
+        }
+
+        let (new_x, new_y) = curr_dir.offset_calc((curr_x, curr_y));
+        let new_pos = map_size.to_pos((new_x, new_y));
+        if additional_obstacle == new_pos || obstacles.contains(&new_pos) {
+            return Some((map_size.to_pos((curr_x, curr_y)), curr_dir.turn()));
+        }
+        (curr_x, curr_y) = (new_x, new_y);
     }
 }
 
@@ -126,6 +192,7 @@ enum Direction {
     Down,
     Left,
 }
+
 impl Direction {
     #[inline]
     fn turn(self) -> Direction {
@@ -148,13 +215,6 @@ impl Direction {
     }
 }
 
-type Guard = (Pos, Direction);
-type Width = u32;
-type Height = u32;
-type MapSize = (Width, Height);
-type Pos = (Width, Height);
-type Obstacles = HashSet<Pos>;
-
 fn parse_input(input: &str) -> (MapSize, Guard, Obstacles) {
     let width = input
         .find(char::is_whitespace)
@@ -163,16 +223,16 @@ fn parse_input(input: &str) -> (MapSize, Guard, Obstacles) {
         .unwrap();
     let mut height = 0;
     let mut guard_pos = None;
-    let mut obstacles = HashSet::new();
+    let mut obstacles = HashSet::default();
     for line in input.lines() {
         for (idx, field) in line.chars().enumerate() {
             match field {
                 '.' => continue,
                 '#' => {
-                    obstacles.insert((idx as _, height));
+                    obstacles.insert((width, height).to_pos((idx as _, height)));
                 }
                 '^' => {
-                    let _ = guard_pos.insert((idx as _, height));
+                    let _ = guard_pos.insert((width, height).to_pos((idx as _, height)));
                 }
                 other => panic!("unexpected field {other}"),
             };
