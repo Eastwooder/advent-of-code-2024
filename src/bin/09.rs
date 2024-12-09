@@ -1,60 +1,51 @@
-use roaring::{MultiOps, RoaringBitmap};
 use std::cell::Cell;
 
 advent_of_code::solution!(9);
 
-pub fn part_one(input: &str) -> Option<u32> {
-    let (disk, ids) = parse_input(input);
-    let defraged = defrag(disk, &ids);
-    Some(calc_checksum(defraged))
+pub fn part_one(input: &str) -> Option<u64> {
+    let ids = parse_input(input);
+    Some(defrag_2(ids))
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(_: &str) -> Option<u64> {
     None
 }
 
-fn defrag(mut disk: RoaringBitmap, ids: &[Cell<Option<FileId>>]) -> Vec<FileId> {
-    let mut x = 0;
-    loop {
-        let free = RoaringBitmap::from_iter(0..=disk.max().unwrap());
-        let free = [free, disk.clone()].into_iter().difference();
-        println!("defragging {} elements", free.len());
-        if free.is_empty() {
+fn defrag_2(ids: Vec<Cell<Option<FileId>>>) -> u64 {
+    let mut front = ids.iter().enumerate();
+    let mut back = ids.iter().enumerate().rev();
+    'outer: loop {
+        let Some((f_idx, f_val)) = front.next() else {
             break;
-        }
-        for f in free {
-            let Some(last) = disk.iter().last() else {
-                panic!("expected there to be a last element")
-            };
-            // println!("free {last} for {f}");
-            assert!(disk.remove(last));
-            assert!(disk.insert(f));
-            let _ = &ids[last as usize].swap(&ids[f as usize]);
+        };
+        if f_val.get().is_none() {
+            let mut b = back.next();
+            'inner: loop {
+                let Some((b_idx, b_val)) = b else {
+                    break 'outer;
+                };
+                if f_idx >= b_idx {
+                    break 'outer;
+                }
+                if b_val.get().is_some() {
+                    f_val.swap(b_val);
+                    break 'inner;
+                }
+                b = back.next();
+            }
         }
     }
-    for id in ids {
-        if let Some(id) = id.get() {
-            print!("{id}")
-        } else {
-            print!(" ")
-        }
-    }
-    ids.into_iter().flat_map(|x| x.get()).collect()
-}
-
-fn calc_checksum(disk: Vec<FileId>) -> u32 {
-    disk.into_iter()
+    ids.into_iter()
+        .flat_map(|x| x.get())
         .enumerate()
-        .map(|(idx, file_id)| idx as u32 * file_id as u32)
+        .map(|(idx, file_id)| idx as u64 * file_id as u64)
         .sum()
 }
 
-type Disk = RoaringBitmap;
 type FileId = u16;
 type Ids = Vec<Cell<Option<FileId>>>;
 
-fn parse_input(input: &str) -> (Disk, Ids) {
-    let mut disk = Disk::new();
+fn parse_input(input: &str) -> Ids {
     let mut ids = Ids::with_capacity(u16::MAX as usize);
     let mut is_file = true;
     let mut current = 0;
@@ -63,7 +54,6 @@ fn parse_input(input: &str) -> (Disk, Ids) {
         for num in line.chars() {
             let num = num.to_digit(10).unwrap();
             let id = if is_file {
-                disk.insert_range(current..(current + num));
                 let x = Some(file_id);
                 file_id += 1;
                 x
@@ -77,7 +67,7 @@ fn parse_input(input: &str) -> (Disk, Ids) {
             is_file = !is_file;
         }
     }
-    (disk, ids)
+    ids
 }
 
 #[cfg(test)]
