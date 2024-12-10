@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustc_hash::{FxBuildHasher, FxHashSet};
 
 advent_of_code::solution!(10);
@@ -7,8 +8,9 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(count_trails(matrix, start_points))
 }
 
-pub fn part_two(_: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<u32> {
+    let (matrix, start_points) = parse_input(input);
+    Some(find_distinct_trails(matrix, start_points))
 }
 
 type Row = Vec<u8>;
@@ -78,6 +80,31 @@ fn parse_input(input: &str) -> (Matrix, StartPoints) {
     (matrix, start_points)
 }
 
+fn find_distinct_trails(matrix: Matrix, start_points: StartPoints) -> u32 {
+    let mut sum = 0;
+    for s in start_points {
+        let trails = track_trail(s, &matrix, &[]);
+        sum += trails.len() as u32;
+    }
+    sum
+}
+
+fn track_trail(current: Coords, matrix: &Matrix, head: &[Coords]) -> FxHashSet<Vec<Coords>> {
+    let val = matrix[current.0][current.1];
+    let mut trail = head.iter().copied().collect_vec();
+    trail.push(current);
+    if val == 9 {
+        FxHashSet::from_iter([trail])
+    } else {
+        let next = val + 1;
+        let set = find_neighbours(current, matrix, next)
+            .iter()
+            .flat_map(|&n| track_trail(n, matrix, &trail))
+            .collect();
+        set
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,6 +118,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(81));
     }
 }
