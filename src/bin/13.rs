@@ -9,7 +9,7 @@ pub fn part_one(input: &str) -> Option<Cost> {
 
 pub fn part_two(input: &str) -> Option<Cost> {
     let mut config = parse_input(input);
-    config.iter_mut().for_each(|c| increase_price(c));
+    config.iter_mut().for_each(increase_price);
     Some(calculate_price(config))
 }
 
