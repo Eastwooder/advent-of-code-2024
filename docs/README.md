@@ -22,8 +22,9 @@ Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.
 | [Day 9](../src/bin/09.rs) | `383.7µs` | `152.6ms` |
 | [Day 10](../src/bin/10.rs) | `630.6µs` | `1.2ms` |
 | [Day 11](../src/bin/11.rs) | `33.6µs` | `1.3ms` |
+| [Day 12](../src/bin/12.rs) | `622.6µs` | `1.8ms` |
 
-**Total: 168.85ms**
+**Total: 171.27ms**
 <!--- benchmarking table --->
 
 My repository for the [2024 Edition of the Advent of Code](https://adventofcode.com/2024).
