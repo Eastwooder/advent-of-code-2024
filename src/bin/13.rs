@@ -8,8 +8,15 @@ pub fn part_one(input: &str) -> Option<Cost> {
 }
 
 pub fn part_two(input: &str) -> Option<Cost> {
-    let config = parse_input(input);
+    let mut config = parse_input(input);
+    config.iter_mut().for_each(|c| increase_price(c));
     Some(calculate_price(config))
+}
+
+fn increase_price(c: &mut Configuration) {
+    const EXTRA: i64 = 10_000_000_000_000;
+    c.price.x += EXTRA;
+    c.price.y += EXTRA;
 }
 
 type Pos = glam::i64::I64Vec2;
@@ -67,17 +74,13 @@ mod tests {
 
     #[test]
     fn test_part_one() {
-        let result = part_one(&advent_of_code::template::read_file_part(
-            "examples", DAY, 1,
-        ));
+        let result = part_one(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(480));
     }
 
     #[test]
     fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file_part(
-            "examples", DAY, 2,
-        ));
+        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(875318608908));
     }
 }
