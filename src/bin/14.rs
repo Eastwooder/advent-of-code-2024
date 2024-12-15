@@ -1,4 +1,5 @@
 use glam::IVec2;
+use rustc_hash::FxHashSet;
 
 advent_of_code::solution!(14);
 
@@ -8,8 +9,79 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(sums.iter().product())
 }
 
-pub fn part_two(_: &str) -> Option<u32> {
+pub fn part_two(input: &str) -> Option<usize> {
+    let robots = parse_input(input).unwrap();
+    #[cfg(debug_assertions)]
+    let print = true;
+    #[cfg(not(debug_assertions))]
+    let print = false;
+    Some(seconds_until_xmas_tree(&robots, WIDTH, HEIGHT, 100, print).unwrap())
+}
+
+fn seconds_until_xmas_tree(
+    robots: &[(Pos, Velocity)],
+    width: i32,
+    height: i32,
+    neighbour_limit: usize,
+    print: bool,
+) -> Option<usize> {
+    for i in 0..30000 {
+        let rs = robots
+            .iter()
+            .map(|&r| walk_robot(r, i, width, height))
+            .collect::<FxHashSet<_>>();
+        let mut upper = 0;
+        for r in &rs {
+            upper = upper.max(find_neighbours(*r, &rs));
+        }
+        if upper >= neighbour_limit {
+            if print {
+                println!("--- iteration {i:05} --------------------------------------");
+                println!();
+                for width in 0..width {
+                    for height in 0..height {
+                        if rs.contains(&Pos::new(width, height)) {
+                            print!("#");
+                        } else {
+                            print!(" ");
+                        }
+                    }
+                    println!();
+                }
+                println!();
+                println!("-----------------------------------------------------------");
+            }
+            return Some(i);
+        }
+    }
     None
+}
+
+fn find_neighbours(point: Pos, robots: &FxHashSet<Pos>) -> usize {
+    let mut visited = FxHashSet::default();
+    let mut stack = vec![point];
+    let mut points = 0;
+    while let Some(curr) = stack.pop() {
+        points += 1;
+        for pos in find_direct_neighbours(curr, robots) {
+            if visited.insert(pos) {
+                stack.push(pos);
+            }
+        }
+    }
+    points
+}
+
+fn find_direct_neighbours(point: Pos, robots: &FxHashSet<Pos>) -> Vec<Pos> {
+    const TOP: Pos = Pos::new(0, -1);
+    const RIGHT: Pos = Pos::new(-1, 0);
+    const BOT: Pos = Pos::new(0, 1);
+    const LEFT: Pos = Pos::new(1, 0);
+    [TOP, RIGHT, BOT, LEFT]
+        .into_iter()
+        .map(|dir| point + dir)
+        .filter(|pos| robots.contains(pos))
+        .collect()
 }
 
 fn walk_robots(robots: &[(Pos, Velocity)], times: usize, width: i32, height: i32) -> [usize; 4] {
@@ -99,8 +171,10 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        let input = advent_of_code::template::read_file("examples", DAY);
+        let robots = parse_input(&input).unwrap();
+        let result = seconds_until_xmas_tree(&robots, WIDTH, HEIGHT, 6, true);
+        assert_eq!(result, Some(6819));
     }
 
     #[test]
