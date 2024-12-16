@@ -37,3 +37,4 @@ glam = { version = "0.29.2", features = ["core-simd"] }
 rustc-hash = "2.1.0"
 roaring = "0.10.8"
 arrayvec = "0.7.6"
+pathfinding = "4.12.0"
