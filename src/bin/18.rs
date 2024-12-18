@@ -7,12 +7,13 @@ use rustc_hash::FxHashMap;
 advent_of_code::solution!(18);
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let (map, end) = parse_input::<71, 71, 1024>(input);
+    let (map, end, _) = parse_input::<71, 71, 1024>(input);
     Some(find_exit(map, end))
 }
 
-pub fn part_two(_: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<String> {
+    let (map, end, rest) = parse_input::<71, 71, 1024>(input);
+    Some(find_exit_try(map, end, rest).to_string())
 }
 
 fn find_exit(map: Map2, end: Pos) -> usize {
@@ -22,6 +23,17 @@ fn find_exit(map: Map2, end: Pos) -> usize {
     let p: FxHashMap<_, _> = path.iter().map(|&pos| (pos, 'O')).collect();
     map2.print_map(p);
     path.len() - 1
+}
+
+fn find_exit_try(mut map: Map2, end: Pos, rest: Vec<Pos>) -> String {
+    for r in rest {
+        map.set_unwalkable(r);
+        let succ = successor_bfs(|pos| map.in_bounds(pos) && map.is_walkable(pos));
+        if bfs(&Pos::new(0, 0), succ, |&pos| pos == end).is_none() {
+            return format!("{},{}", r.x, r.y);
+        }
+    }
+    panic!("No solution found")
 }
 
 fn successor_bfs(is_valid: impl Fn(Pos) -> bool) -> impl Fn(&Pos) -> ArrayVec<Pos, 4> {
@@ -43,7 +55,9 @@ fn successor_bfs(is_valid: impl Fn(Pos) -> bool) -> impl Fn(&Pos) -> ArrayVec<Po
     }
 }
 
-fn parse_input<const W: u32, const H: u32, const DIGEST: usize>(input: &str) -> (Map2, Pos) {
+fn parse_input<const W: u32, const H: u32, const DIGEST: usize>(
+    input: &str,
+) -> (Map2, Pos, Vec<Pos>) {
     let mut map = Map2 {
         map: RoaringBitmap::new(),
         dimension: UVec2::new(W, H),
@@ -53,15 +67,21 @@ fn parse_input<const W: u32, const H: u32, const DIGEST: usize>(input: &str) -> 
             map.set_walkable(Pos::new(x as i32, y as i32));
         }
     }
-    for (x, y) in input
+    for pos in stream_input(input).take(DIGEST) {
+        map.set_unwalkable(pos);
+    }
+    (
+        map,
+        Pos::new(W as i32 - 1, H as i32 - 1),
+        stream_input(input).skip(DIGEST).collect(),
+    )
+}
+
+fn stream_input(input: &str) -> impl Iterator<Item = Pos> + '_ {
+    input
         .lines()
         .map(|line| line.split_once(',').unwrap())
-        .map(|(l, r)| (l.parse().unwrap(), r.parse().unwrap()))
-        .take(DIGEST)
-    {
-        map.set_unwalkable(Pos::new(x, y));
-    }
-    (map, Pos::new(W as i32 - 1, H as i32 - 1))
+        .map(|(l, r)| Pos::new(l.parse().unwrap(), r.parse().unwrap()))
 }
 
 type Pos = IVec2;
@@ -137,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_part_one() {
-        let (map, end) =
+        let (map, end, _) =
             parse_input::<7, 7, 12>(&advent_of_code::template::read_file("examples", DAY));
         let result = find_exit(map, end);
         assert_eq!(result, 22);
@@ -145,8 +165,10 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        let (map, end, stream) =
+            parse_input::<7, 7, 12>(&advent_of_code::template::read_file("examples", DAY));
+        let result = find_exit_try(map, end, stream);
+        assert_eq!(result, "6,1".to_string());
     }
 
     #[test]
