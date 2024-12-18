@@ -17,19 +17,26 @@ pub fn part_two(input: &str) -> Option<String> {
 }
 
 fn find_exit(map: Map2, end: Pos) -> usize {
-    let map2 = map.clone();
     let succ = successor_bfs(move |pos| map.in_bounds(pos) && map.is_walkable(pos));
     let path = bfs(&Pos::new(0, 0), succ, |&pos| pos == end).unwrap();
-    let p: FxHashMap<_, _> = path.iter().map(|&pos| (pos, 'O')).collect();
-    map2.print_map(p);
     path.len() - 1
 }
 
 fn find_exit_try(mut map: Map2, end: Pos, rest: Vec<Pos>) -> String {
+    let mut curr_bfs = {
+        let succ = successor_bfs(|pos| map.in_bounds(pos) && map.is_walkable(pos));
+        bfs(&Pos::new(0, 0), succ, |&pos| pos == end)
+    };
     for r in rest {
         map.set_unwalkable(r);
+        if let Some(curr_bfs) = &curr_bfs {
+            if !curr_bfs.contains(&r) {
+                continue;
+            }
+        }
         let succ = successor_bfs(|pos| map.in_bounds(pos) && map.is_walkable(pos));
-        if bfs(&Pos::new(0, 0), succ, |&pos| pos == end).is_none() {
+        curr_bfs = bfs(&Pos::new(0, 0), succ, |&pos| pos == end);
+        if curr_bfs.is_none() {
             return format!("{},{}", r.x, r.y);
         }
     }
