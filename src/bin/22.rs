@@ -70,7 +70,10 @@ fn find_sequences_with_costs(secret: Secret) -> FxHashMap<Sequence, Cost> {
         .map(|(_, cost, delta)| (delta, cost))
         .tuple_windows()
     {
-        let sequence = [s1.0, s2.0, s3.0, s4.0];
+        let mut sequence = (9i32 + s4.0) as Sequence;
+        sequence += ((9i32 + s3.0) as Sequence) << 5;
+        sequence += ((9i32 + s2.0) as Sequence) << 10;
+        sequence += ((9i32 + s1.0) as Sequence) << 15;
         let cost = s4.1;
         // inserting the first cost for the sequence
         sequences.entry(sequence).or_insert(cost);
@@ -81,8 +84,10 @@ fn find_sequences_with_costs(secret: Secret) -> FxHashMap<Sequence, Cost> {
 type Secret = u64;
 type Cost = u8;
 type TotalCost = u32;
-type DiffToPrev = i64;
-type Sequence = [DiffToPrev; 4];
+type DiffToPrev = i32;
+// -9 to 9 = 19 possible values, which fit into 5 bits
+// diffs => 20 bits, so u32 will fit
+type Sequence = u32;
 
 fn parse_input(input: &str) -> Vec<Secret> {
     input.lines().map(|line| line.parse().unwrap()).collect()
